@@ -3,6 +3,7 @@ from fastapi import APIRouter, Query, Request
 from src.api.dependencies import AnnotatedPluginManager, AnnotatedSettings
 from src.core.exceptions import *
 from src.api.handlers import valid_token
+from src.config.logconfig import logger
 
 
 router = APIRouter(prefix="/integrations", tags=["Integrations"])
@@ -23,6 +24,7 @@ def get_authorization_url_resource(
             if getattr(impl.plugin, "name", None) in name
         ]
         if not matching_plugins:
+            logger.warning(f"CRM plugin not found for integration name: '{name}'")
             raise CRMNotFoundException(
                 message=f"No plugins found for integration '{name}'", status_code=404
             )
@@ -33,6 +35,7 @@ def get_authorization_url_resource(
             ]
         )
         plugins = subset(settings=settings)
+    logger.info(f"Authentication urls requested for integrations {name}")
     return dict(plugins)
 
 
@@ -44,15 +47,19 @@ def get_contacts_resource(
 ):
     if not name:
         pm.hook.get_contacts(settings=settings)
+        logger.info(f"Contacts have been imported for all registered CRMs!")
         return {"message": "Contacts imported and saved successfully for all CRMs!"}
     else:
         for impl in pm.hook.get_contacts.get_hookimpls():
             plugin = impl.plugin
             if getattr(plugin, "name", None) == name:
                 impl.function(settings=settings)
+                logger.info(f"Contacts have been imported for integration name: {name}")
                 return {
-                    "message": f"Contacts imported and saved successfully for CRM {name}!!"
+                    "message": f"Contacts imported and saved successfully for integration name: {name}!!"
                 }
+        #something is unusual but system is functioning: warning
+        logger.warning(f"CRM plugin not found for integration name: '{name}'")
         raise CRMNotFoundException(
             message=f"No plugin found for integration name '{name}'", status_code=404
         )
@@ -71,7 +78,9 @@ def create_contacts_resource(
             plugin = impl.plugin
             if getattr(plugin, "name", None) == name:
                 impl.function(settings=settings, pm=pm)
+                logger.info(f"Contacts have been imported for integration name: {name}")
                 return {"message": "Successfuly exported!"}
+        logger.warning(f"CRM plugin not found for integration name: '{name}'")
         raise CRMNotFoundException(
             message=f"No plugin found for CRM {name}", status_code=404
         )
@@ -80,4 +89,5 @@ def create_contacts_resource(
 @router.get("/revoke-token")
 def revoke_token(pm: AnnotatedPluginManager):
     pm.hook.revoke_token()
+    logger.info("Tokens destroyed for all integrations.")
     return {"message": "Token destroyed successfully!"}

@@ -6,6 +6,7 @@ from fastapi import HTTPException, Request
 from datetime import datetime
 from src.core.exceptions import *
 from src.api.handlers import *
+from src.config.logconfig import logger
 
 
 hookimpl = pluggy.HookimplMarker("crmintegration")
@@ -29,6 +30,7 @@ class CapsulePlugin:
         }
         query_string = urlencode(params)
         full_uri = f"{base_uri}?{query_string}"
+        logger.info(f"Auth URL requested for {self.name}: {full_uri}")
         return self.name, full_uri
 
 
@@ -43,6 +45,7 @@ class CapsulePlugin:
         }
         response = httpx.post(base_uri, data=body)
         if response.status_code != 200:
+            logger.error(f"Failed to post to {base_uri}. Status code: {response.status_code}, Response: {response.text}")
             raise CRMTokenException(
                 message=response.text, status_code=response.status_code
             )
@@ -61,6 +64,7 @@ class CapsulePlugin:
             filtered_contacts =self.filter_contacts(response.json())
             save_contacts(self.name,filtered_contacts)
         else:
+            logger.error(f"Failed to retrieve contacts for {self.name}. Status code: {response.status_code}, Response: {response.text}")
             raise ImportContactsException(
                 message=response.text, status_code=response.status_code
             )
@@ -79,6 +83,7 @@ class CapsulePlugin:
                 "name": self.name,
             }
             extracted_data.append(extracted)
+        logger.info(f"{len(extracted_data)} contacts successfully filtered for {self.name}.")
         return extracted_data
 
 
@@ -94,10 +99,13 @@ class CapsulePlugin:
             "refresh_token": refresh_token,
             "grant_type": "refresh_token",
         }
+        logger.info(f"Attempting to refresh token for {self.name} using client_id {settings.capsule.client_id}")
         response = httpx.post(base_uri, data=body)
         if response.status_code == 200:
             save_token_with_expiry(self.name, response.json())
+            logger.info(f"Token successfully refreshed for {self.name}.")
         else:
+            logger.error(f"Failed to refresh token for {self.name}. Status code: {response.status_code}, Response: {response.text}")
             raise CRMTokenException(
                 message=response.text, status_code=response.status_code
             )
@@ -114,7 +122,9 @@ class CapsulePlugin:
         if response.status_code == 200:
             clear_json("src/crmdata/token.json")
             clear_json("src/crmdata/state.json")
+            logger.info(f"Token successfully revoked for {self.name}. Clearing token and state data.")
         else:
+            logger.error(f"Failed to revoke token for {self.name}. Status code: {response.status_code}, Response: {response.text}")
             raise CRMTokenException(
                 message=response.text, status_code=response.status_code
             )

@@ -5,6 +5,7 @@ from pluggy import PluginManager
 from src.config.settings import AppSettings
 from src.api.handlers import *
 from src.core.exceptions import *
+from src.config.logconfig import logger
 
 
 hookimpl = pluggy.HookimplMarker("crmintegration")
@@ -27,6 +28,7 @@ class HubspotPlugin:
         }
         query_string = urlencode(params)
         full_uri = f"{base_uri}?{query_string}"
+        logger.info(f"Auth URL requested for {self.name}: {full_uri}")
         return self.name, full_uri
 
     @hookimpl
@@ -42,6 +44,7 @@ class HubspotPlugin:
         }
         response = httpx.post(base_uri, headers=headers, data=body)
         if response.status_code != 200:
+            logger.error(f"Failed to post to {base_uri}. Status code: {response.status_code}, Response: {response.text}")
             raise CRMTokenException(
                 message=response.text, status_code=response.status_code
             )
@@ -65,13 +68,14 @@ class HubspotPlugin:
             filtered_contacts =self.filter_contacts(response.json())
             save_contacts(self.name,filtered_contacts)
         else:
+            logger.error(f"Failed to retrieve contacts for {self.name}. Status code: {response.status_code}, Response: {response.text}")
             raise ImportContactsException(
                 message=response.text, status_code=response.status_code
             )
 
     @hookimpl
     def filter_contacts(self, contacts: dict)->List|None:
-        extracted = []
+        extracted_data= []
         for item in contacts.get("results", []):
             props = item.get("properties", {})
             contact = {
@@ -82,8 +86,9 @@ class HubspotPlugin:
                 "phoneNumbers": [props.get("phone")] if props.get("phone") else [],
                 "name": self.name
             }
-            extracted.append(contact)
-        return extracted
+            extracted_data.append(contact)
+        logger.info(f"{len(extracted_data)} contacts successfully filtered for {self.name}.")
+        return extracted_data
 
     @hookimpl
     def create_contacts(self, settings: AppSettings, pm: PluginManager):
@@ -106,6 +111,7 @@ class HubspotPlugin:
         }
         response = httpx.post(base_uri, headers=headers, json=data)
         if response.status_code == 201:
+            logger.error(f"Failed to create contacts for {self.name}. Status code: {response.status_code}, Response: {response.text}")
             raise ExportContactsException(message="", status_code=response.status_code)
 
     @hookimpl
@@ -122,10 +128,13 @@ class HubspotPlugin:
             "refresh_token": refresh_token,
         }
         response = httpx.get(base_uri, headers=headers, params=body)
+        logger.info(f"Attempting to refresh token for {self.name} using client_id {settings.capsule.client_id}")
         response = httpx.post(base_uri, data=body)
         if response.status_code == 200:
             save_token_with_expiry(self.name, response.json())
+            logger.info(f"Token successfully refreshed for {self.name}.")
         else:
+            logger.error(f"Failed to refresh token for {self.name}. Status code: {response.status_code}, Response: {response.text}")
             raise CRMTokenException(
                 message=response.text, status_code=response.status_code
             )
