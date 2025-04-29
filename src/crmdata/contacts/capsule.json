@@ -1,0 +1,76 @@
+[
+    {
+        "id": 269981446,
+        "firstName": "Palpasa",
+        "lastName": "Manandhar",
+        "phoneNumbers": [
+            "9861834166"
+        ],
+        "emailAddresses": [
+            "palpasa@yopmail.com"
+        ],
+        "name": "capsule"
+    },
+    {
+        "id": 269981447,
+        "firstName": null,
+        "lastName": null,
+        "phoneNumbers": [],
+        "emailAddresses": [
+            "support@capsulecrm.com"
+        ],
+        "name": "capsule"
+    },
+    {
+        "id": 269981451,
+        "firstName": "Palpasa",
+        "lastName": "Manandhar",
+        "phoneNumbers": [],
+        "emailAddresses": [
+            "palpasa04@gmail.com"
+        ],
+        "name": "capsule"
+    },
+    {
+        "id": 269981452,
+        "firstName": null,
+        "lastName": null,
+        "phoneNumbers": [],
+        "emailAddresses": [],
+        "name": "capsule"
+    },
+    {
+        "id": 270004858,
+        "firstName": "Palistha",
+        "lastName": "Manandhar",
+        "phoneNumbers": [
+            "9841444444"
+        ],
+        "emailAddresses": [],
+        "name": "capsule"
+    },
+    {
+        "id": 270359834,
+        "firstName": "Mathew",
+        "lastName": "Perry",
+        "phoneNumbers": [
+            "9841778899"
+        ],
+        "emailAddresses": [
+            "mathew111@gmail.com"
+        ],
+        "name": "capsule"
+    },
+    {
+        "id": 270359845,
+        "firstName": "Taylor",
+        "lastName": "Swift",
+        "phoneNumbers": [
+            "9841589764"
+        ],
+        "emailAddresses": [
+            "taylorswift@gmail.com"
+        ],
+        "name": "capsule"
+    }
+]

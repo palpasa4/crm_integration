@@ -14,10 +14,9 @@ router = APIRouter(prefix="/callbacks", tags=["Callbacks"])
 def generate_access_token(
     name: str,
     code: str,
-    
     state: str,
     pm: AnnotatedPluginManager,
-    settings: AnnotatedSettings,
+    settings: AnnotatedSettings
 ):
     check_state(name, state)
     for impl in pm.hook.get_access_token.get_hookimpls():

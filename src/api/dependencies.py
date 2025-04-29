@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+import httpx
 from typing import Annotated
 from fastapi import Depends, Request
 from pluggy import PluginManager
@@ -15,3 +17,4 @@ def get_app_settings(request: Request) -> AppSettings:
 AnnotatedPluginManager = Annotated[PluginManager, Depends(get_plugin_manager)]
 
 AnnotatedSettings = Annotated[AppSettings, Depends(get_app_settings)]
+

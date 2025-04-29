@@ -1,12 +1,11 @@
-import stat
-from typing import Literal
+from typing import Literal, List, Union
 import json, os, random, string, uuid
 from datetime import datetime, timedelta
 from src.core.middleware import *
 from src.core.exceptions import *
 
 
-def read_json(filename: str) -> dict:
+def read_json(filename: str)->Union[list,dict]:
     try:
         with open(filename, "r") as file:
             return json.load(file)
@@ -14,7 +13,7 @@ def read_json(filename: str) -> dict:
         raise JSONException(message="Failed to read json!", status_code=500)
 
 
-def write_json(data: dict, filename: str) -> None:
+def write_json(data: dict | list, filename: str) -> None:
     try:
         with open(filename, "w") as file:
             json.dump(data, file, indent=4)
@@ -24,11 +23,12 @@ def write_json(data: dict, filename: str) -> None:
 
 def get_value_from_json(filename: str, crm: str, key: str) -> str | None:
     data = read_json(filename)
-    if crm not in data or key not in data[crm]:
-        raise ValueNotFoundException(
-            message=f"{key} not found for CRM '{crm}'!", status_code=404
-        )
-    return data[crm][key]
+    if isinstance(data, dict):
+        if crm not in data or key not in data[crm]:
+            raise ValueNotFoundException(
+                message=f"{key} not found for CRM '{crm}'!", status_code=404
+            )
+        return data[crm][key]
 
 
 def clear_json(filename: str) -> None:
@@ -43,7 +43,8 @@ def generate_and_store_state(crm: str) -> str:
     filepath = "src/crmdata/state.json"
     state = "".join(random.choices(string.ascii_letters + string.digits, k=32))
     data = read_json(filepath) if os.path.exists(filepath) else {}
-    data[crm] = {"state": state}
+    if isinstance(data, dict):
+        data[crm] = {"state": state}
     write_json(data, filepath)
     return state
 
@@ -63,15 +64,16 @@ def save_token_with_expiry(crm: str, token_data: dict) -> None:
         )
     filepath = "src/crmdata/token.json"
     data = read_json(filepath) if os.path.exists(filepath) else {}
-    issued_at = datetime.utcnow()
-    expires_in = int(token_data["expires_in"])
-    expires_at = issued_at + timedelta(seconds=expires_in)
-    data[crm] = {
-        **token_data,
-        "issued_at": issued_at.isoformat(),
-        "expires_at": expires_at.isoformat(),
-    }
-    write_json(data, filepath)
+    if isinstance(data, dict):
+        issued_at = datetime.utcnow()
+        expires_in = int(token_data["expires_in"])
+        expires_at = issued_at + timedelta(seconds=expires_in)
+        data[crm] = {
+            **token_data,
+            "issued_at": issued_at.isoformat(),
+            "expires_at": expires_at.isoformat(),
+        }
+        write_json(data, filepath)
 
 
 def valid_token(crm: str) -> bool:
@@ -84,13 +86,19 @@ def valid_token(crm: str) -> bool:
     return True if current_time < expiry_time else False
 
 
-def save_contacts(crm: str, contacts: dict) -> None:
-
-    filepath = "src/crmdata/contacts.json"
-    data = read_json(filepath) if os.path.exists(filepath) else {}
-    if data.get(crm):
-        raise ImportExistsException(
-            message=f"Contacts have already been imported CRM: {crm}", status_code=409
-        )
-    data[crm] = contacts
-    write_json(data, filepath)
+def save_contacts(crm: str, contacts: list | None) -> None:
+    if not contacts:
+        raise ImportContactsException("No contacts to process.",status_code=400)
+    filepath = f"src/crmdata/contacts/{crm}.json"
+    data= read_json(filepath) if os.path.exists(filepath) else []
+    if not isinstance(data, list):
+        raise JSONException(message="Error while processing contacts!",status_code=400)
+    if not data:
+        write_json(contacts,filepath)
+    else:
+        existing_ids = {contact.get("id") for contact in data}
+        new_contacts = [contact for contact in contacts if contact.get("id") not in existing_ids]
+        if not new_contacts:
+            raise DuplicateImportException(message=f"Added contacts are already saved for CRM: {crm}", status_code=409)
+        data.extend(new_contacts)
+        write_json(data, filepath)

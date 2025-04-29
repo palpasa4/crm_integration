@@ -1,4 +1,5 @@
-import pluggy, requests
+from typing import List
+import pluggy, httpx
 from urllib.parse import urlencode
 from pluggy import PluginManager
 from src.config.settings import AppSettings
@@ -11,7 +12,7 @@ hookimpl = pluggy.HookimplMarker("crmintegration")
 
 class HubspotPlugin:
 
-    name = "hubspot" 
+    name = "hubspot"
 
     @hookimpl
     def get_auth_url(self, settings: AppSettings):
@@ -26,7 +27,7 @@ class HubspotPlugin:
         }
         query_string = urlencode(params)
         full_uri = f"{base_uri}?{query_string}"
-        return self.name,full_uri
+        return self.name, full_uri
 
     @hookimpl
     def get_access_token(self, code: str, settings: AppSettings):
@@ -39,7 +40,7 @@ class HubspotPlugin:
             "redirect_uri": "http://localhost:8000/callbacks/integrations/hubspot",
             "code": code,
         }
-        response = requests.post(base_uri, headers=headers, data=body)
+        response = httpx.post(base_uri, headers=headers, data=body)
         if response.status_code != 200:
             raise CRMTokenException(
                 message=response.text, status_code=response.status_code
@@ -47,9 +48,9 @@ class HubspotPlugin:
         save_token_with_expiry(self.name, response.json())
 
     @hookimpl
-    def get_contacts(self, settings: AppSettings, pm: PluginManager):
+    def get_contacts(self, settings: AppSettings):
         if not valid_token(self.name):
-            pm.hook.get_new_token(settings=settings)
+            self.get_new_token(settings=settings)
         base_uri = "https://api.hubapi.com/crm/v3/objects/contacts"
         access_token = get_value_from_json(
             "src/crmdata/token.json", self.name, "access_token"
@@ -58,14 +59,31 @@ class HubspotPlugin:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
-        response = requests.get(base_uri, headers=headers)
+        response = httpx.get(base_uri, headers=headers)
         # response.raise_for_status()
         if response.status_code == 200:
-            save_contacts(self.name, response.json())
+            filtered_contacts =self.filter_contacts(response.json())
+            save_contacts(self.name,filtered_contacts)
         else:
             raise ImportContactsException(
                 message=response.text, status_code=response.status_code
             )
+
+    @hookimpl
+    def filter_contacts(self, contacts: dict)->List|None:
+        extracted = []
+        for item in contacts.get("results", []):
+            props = item.get("properties", {})
+            contact = {
+                "id": item.get("id"),
+                "firstName": props.get("firstname"),
+                "lastName": props.get("lastname"),
+                "emailAddresses": [props.get("email")] if props.get("email") else [],
+                "phoneNumbers": [props.get("phone")] if props.get("phone") else [],
+                "name": self.name
+            }
+            extracted.append(contact)
+        return extracted
 
     @hookimpl
     def create_contacts(self, settings: AppSettings, pm: PluginManager):
@@ -75,7 +93,7 @@ class HubspotPlugin:
         base_uri = "https://api.hubapi.com/crm/v3/objects/contacts"
         headers = {
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
         data = {
             "properties": {
@@ -83,12 +101,12 @@ class HubspotPlugin:
                 "firstname": "John",
                 "lastname": "Doe",
                 "phone": "+123456789",
-                "company": "Example Company"
+                "company": "Example Company",
             }
         }
-        response = requests.post(base_uri, headers=headers, json=data)
+        response = httpx.post(base_uri, headers=headers, json=data)
         if response.status_code == 201:
-            raise ContactExistsException(message="",status_code=response.status_code)
+            raise ExportContactsException(message="", status_code=response.status_code)
 
     @hookimpl
     def get_new_token(self, settings: AppSettings):
@@ -103,8 +121,8 @@ class HubspotPlugin:
             "client_secret": settings.hubspot.client_secret,
             "refresh_token": refresh_token,
         }
-        response = requests.get(base_uri, headers=headers, data=body)
-        response = requests.post(base_uri, data=body)
+        response = httpx.get(base_uri, headers=headers, params=body)
+        response = httpx.post(base_uri, data=body)
         if response.status_code == 200:
             save_token_with_expiry(self.name, response.json())
         else:
