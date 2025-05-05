@@ -74,15 +74,16 @@ class CapsulePlugin:
     def filter_contacts(self, contacts: dict)->List|None:
         extracted_data =[]
         for party in contacts["parties"]:
-            extracted = {
-                "id": party.get("id"),
-                "firstName": party.get("firstName"),
-                "lastName": party.get("lastName"),
-                "phoneNumbers": [phone.get("number") for phone in party.get("phoneNumbers", [])],
-                "emailAddresses": [email.get("address") for email in party.get("emailAddresses", [])],
-                "name": self.name,
-            }
-            extracted_data.append(extracted)
+            if party.get("type")=="person":
+                extracted = {
+                    "id": party.get("id"),
+                    "firstName": party.get("firstName"),
+                    "lastName": party.get("lastName"),
+                    "phoneNumbers": [phone.get("number") for phone in party.get("phoneNumbers", [])],
+                    "emailAddresses": [email.get("address") for email in party.get("emailAddresses", [])],
+                    "name": self.name,
+                }
+                extracted_data.append(extracted)
         logger.info(f"{len(extracted_data)} contacts successfully filtered for {self.name}.")
         return extracted_data
 
