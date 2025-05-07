@@ -12,3 +12,5 @@ wheels/
 src/addons/integrations/client.py
 
 .env
+
+logs/

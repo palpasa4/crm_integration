@@ -1,4 +1,0 @@
-2025-05-05 07:47:45,700 - INFO - fastapi-logger - Auth URL requested for hubspot: https://app-na2.hubspot.com/oauth/authorize?client_id=b50bb149-778c-4288-ac15-8300110341bc&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fcallbacks%2Fintegrations%2Fhubspot&scope=oauth+crm.objects.contacts.read+crm.objects.contacts.write&state=NFLf6zPIGNVwFSnYhQk3BbEq5N5Yo8Hi
-2025-05-05 07:47:45,713 - INFO - fastapi-logger - Auth URL requested for capsule: https://api.capsulecrm.com/oauth/authorise?response_type=code&client_id=1mhu1zleb09r1&redirect_url=http%3A%2F%2Flocalhost%3A8000%2Fcallbacks%2Fintegrations%2Fcapsule&scope=read+write&state=ikCneFYlZQCTmkHpPTapswuVmKE4a4ei
-2025-05-05 07:47:45,713 - INFO - fastapi-logger - Authentication urls requested for integrations None
-2025-05-05 07:53:05,993 - INFO - fastapi-logger - 5 contacts successfully filtered for capsule.
